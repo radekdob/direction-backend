@@ -3,6 +3,7 @@ import Exception from "../../lib/helpers/Exception";
 import { USER_CONSTANTS } from "./constants";
 import { fetchSingleUser } from "./service";
 
+// biome-ignore lint/complexity/noStaticOnlyClass: <explanation>
 class UserManager {
   static currentUser = async (user_id: string) => {
     try {

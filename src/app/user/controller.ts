@@ -3,6 +3,7 @@ import UserManager from "./manager";
 import { HTTP_STATUS } from "../../lib/constants/api";
 import { USER_CONSTANTS } from "./constants";
 
+// biome-ignore lint/complexity/noStaticOnlyClass: <explanation>
 class UserController {
   static currentUser: RouteHandlerMethod = async (
     req: FastifyRequest,
@@ -13,11 +14,9 @@ class UserController {
 
       reply.send({ user: user });
     } catch (error: any) {
-      reply
-        .status(error?.statusCode || HTTP_STATUS.BAD_REQUEST_400)
-        .send({
-          error: error?.errorMessage || USER_CONSTANTS.CURRENT_USER_FAILURE,
-        });
+      reply.status(error?.statusCode || HTTP_STATUS.BAD_REQUEST_400).send({
+        error: error?.errorMessage || USER_CONSTANTS.CURRENT_USER_FAILURE,
+      });
     }
   };
 }

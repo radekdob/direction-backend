@@ -25,3 +25,5 @@ build/
 
 # Optional VSCode settings
 .vscode/
+
+prisma/migrations

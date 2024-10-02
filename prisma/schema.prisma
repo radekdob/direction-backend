@@ -19,3 +19,42 @@ model user {
   email    String  @unique @db.VarChar(255)
   password String  @db.VarChar(255)
 }
+
+
+model Blogpost {
+  id                String   @id @default(cuid()) // Primary Key
+  place_id          String   @db.VarChar(255)
+  keywords          String
+  country           String
+  city              String
+  location_name     String
+  location_address  String
+  lat               Float
+  lng               Float
+  blog_url          String
+  location_types    String
+  postcode          String?
+  createdAt         DateTime @default(now()) // Auto-generated timestamp
+  updatedAt         DateTime @updatedAt      // Auto-updated timestamp
+}
+
+model Hotel {
+  id                          String   @id @default(cuid()) // Primary Key
+  place_id                    String   
+  country                     String
+  city                        String
+  hotel_name                  String
+  rating                      Float?
+  location_type               String
+  website                     String?
+  international_phone_number  String?
+  formatted_phone_number      String?
+  editorial_summary           String?
+  location_address            String
+  lat                         Float
+  lng                         Float
+  keywords                    String
+  photo_uri                   String?
+  createdAt                   DateTime @default(now()) // Auto-generated timestamp
+  updatedAt                   DateTime @updatedAt      // Auto-updated timestamp
+}

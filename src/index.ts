@@ -1,15 +1,26 @@
+// index.ts
 import Fastify from "fastify";
 import dotenv from "dotenv";
 import { routes } from "./routes";
 import fastifyJWT from "@fastify/jwt";
-import { AuditLogger, ErrorLogger } from "./middlewares/logging";
 import fastifySwagger from "@fastify/swagger";
 import fastifySwaggerUI from "@fastify/swagger-ui";
+import fastifyCors from "@fastify/cors"; // Added import
+import { AuditLogger, ErrorLogger } from "./middlewares/logging";
+import { initNeo4j, closeNeo4j } from "./utils/neo4j";
+import { prisma } from "./utils/prisma";
 
 dotenv.config();
 
 const fastify = Fastify({
   logger: true,
+  ignoreTrailingSlash: true,
+});
+
+// Register CORS plugin
+fastify.register(fastifyCors, {
+  origin: "*", // Adjust as needed
+  methods: ["GET", "POST", "OPTIONS"],
 });
 
 fastify.register(fastifyJWT, {
@@ -20,8 +31,8 @@ fastify.register(fastifyJWT, {
 fastify.register(fastifySwagger, {
   openapi: {
     info: {
-      title: "Fastify Prisma API",
-      description: "Fastify Prisma API Documentation",
+      title: "Fastify Prisma Neo4j API",
+      description: "API Documentation for Fastify Prisma Neo4j",
       version: "1.0.0",
     },
     servers: [
@@ -42,6 +53,14 @@ fastify.register(fastifySwagger, {
         name: "Root",
         description: "Root endpoints",
       },
+      {
+        name: "Graph",
+        description: "Neo4j Graph queries",
+      },
+      {
+        name: "Prisma",
+        description: "Prisma Database queries",
+      },
     ],
   },
 });
@@ -53,20 +72,8 @@ fastify.register(fastifySwaggerUI, {
     docExpansion: "full",
     deepLinking: false,
   },
-  uiHooks: {
-    onRequest: function (_request, _reply, next) {
-      next();
-    },
-    preHandler: function (_request, _reply, next) {
-      next();
-    },
-  },
   staticCSP: true,
   transformStaticCSP: (header) => header,
-  transformSpecification: (swaggerObject) => {
-    return swaggerObject;
-  },
-  transformSpecificationClone: true,
 });
 
 // Middleware for logging every request
@@ -75,34 +82,22 @@ fastify.addHook("onRequest", AuditLogger);
 // Error handler for logging errors
 fastify.setErrorHandler(ErrorLogger);
 
-// Example route
-fastify.get("/", {
-  schema: {
-    description: "Root endpoint",
-    tags: ["default"],
-    summary: "Returns a Hello World message",
-    response: {
-      200: {
-        description: "Successful response",
-        type: "object",
-        properties: {
-          message: { type: "string" },
-        },
-      },
-    },
-  },
-  handler: (req, res) => {
-    res.send({ message: "Hello World" });
-  },
-});
+// Initialize Neo4j on startup
+initNeo4j();
 
-for (const [prefix, route] of Object.entries(routes)) {
-  fastify.register(route, { prefix });
-}
+// Register routes with '/api' prefix
+fastify.register(
+  async (fastifyInstance) => {
+    for (const [prefix, route] of Object.entries(routes)) {
+      fastifyInstance.register(route, { prefix });
+    }
+  },
+  { prefix: "/api" }
+);
 
 const start = async () => {
   try {
-    await fastify.listen({ port: Number(process.env.PORT) });
+    await fastify.listen({ port: Number(process.env.PORT) || 8000 });
     fastify.swagger();
   } catch (err) {
     fastify.log.error(err);
@@ -110,6 +105,12 @@ const start = async () => {
   }
 };
 
-start();
+start().then(() => {
+  process.on("SIGINT", async () => {
+    await closeNeo4j();
+    await prisma.$disconnect();
+    process.exit(0);
+  });
+});
 
 export default fastify;

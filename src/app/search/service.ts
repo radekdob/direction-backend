@@ -1,34 +1,87 @@
-// src/app/search/service.ts
-import prisma from "../../lib/helpers/prisma";
+// search/service.ts
+import { getNeo4jSession } from "../../utils/neo4j";
+import { extractKeywordsFromUserInput } from "../../utils/openai";
 
-/**
- * Search for blogs and hotels based on the provided keywords.
- * @param keywords - Array of keywords to search for.
- * @returns Object containing arrays of matching blogs and hotels.
- */
-export const searchBlogsAndHotels = async (keywords: string[]) => {
-  // Convert keywords array to a search pattern
-  const keywordPattern = keywords.join("|"); // Create a pattern like "beach|park|luxury"
+interface SearchParams {
+  location?: string;
+  nodeTypes?: string[];
+  keywords?: string[];
+  userInput?: string;
+}
 
-  // Search for matching blogs using the `contains` filter
-  const blogs = await prisma.blogpost.findMany({
-    where: {
-      keywords: {
-        contains: keywordPattern, // Use contains to match the keyword pattern
-        mode: "insensitive", // Make the search case-insensitive
-      },
-    },
-  });
+export async function getLocationsByParams(
+  location?: string,
+  nodeTypes: string[] = [],
+  keywords: string[] = [],
+  userInput: string = ""
+): Promise<object[]> {
+  const session = getNeo4jSession();
 
-  // Search for matching hotels using the `contains` filter
-  const hotels = await prisma.hotel.findMany({
-    where: {
-      keywords: {
-        contains: keywordPattern, // Use contains to match the keyword pattern
-        mode: "insensitive", // Make the search case-insensitive
-      },
-    },
-  });
+  try {
+    // If userInput is provided, extract additional keywords using OpenAI
+    if (userInput.trim() !== "") {
+      const extractedKeywords = await extractKeywordsFromUserInput(userInput);
+      // Merge and deduplicate keywords from frontend and OpenAI
+      keywords = Array.from(new Set([...keywords, ...extractedKeywords]));
+    }
 
-  return { blogs, hotels };
-};
+    // Start building the Cypher query
+    let query = `
+      MATCH (l:Location)
+    `;
+
+    // Parameters object for the query
+    const params: Record<string, any> = {};
+
+    // Filter by location if provided
+    if (location && location.trim() !== "") {
+      query += `
+        MATCH (g:geo_area {name: $location})<-[:IS_IN]-(l)
+      `;
+      params.location = location;
+    }
+
+    // Filter by nodeTypes if provided
+    if (nodeTypes.length > 0) {
+      query += `
+        WHERE ANY(nt IN $nodeTypes WHERE nt IN labels(l))
+      `;
+      params.nodeTypes = nodeTypes;
+    }
+
+    // Filter by keywords if provided
+    if (keywords.length > 0) {
+      query += `
+        MATCH (l)<-[:MATCHES]-(k:Keyword)
+        WHERE k.name IN $keywords
+      `;
+      params.keywords = keywords;
+    }
+
+    // Return distinct locations
+    query += `
+      RETURN DISTINCT l
+    `;
+
+    const result = await session.run(query, params);
+
+    const locations = result.records.map(
+      (record) => record.get("l").properties
+    );
+    return locations;
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error(`Error querying Neo4j: ${error.message}`);
+      throw new Error(
+        `Failed to retrieve locations from Neo4j: ${error.message}`
+      );
+    } else {
+      console.error("An unknown error occurred while querying Neo4j.");
+      throw new Error(
+        "Failed to retrieve locations from Neo4j due to an unknown error."
+      );
+    }
+  } finally {
+    await session.close();
+  }
+}

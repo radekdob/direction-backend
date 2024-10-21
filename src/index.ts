@@ -1,11 +1,10 @@
-// index.ts
 import Fastify from "fastify";
 import dotenv from "dotenv";
 import { routes } from "./routes";
 import fastifyJWT from "@fastify/jwt";
 import fastifySwagger from "@fastify/swagger";
 import fastifySwaggerUI from "@fastify/swagger-ui";
-import fastifyCors from "@fastify/cors"; // Added import
+import fastifyCors from "@fastify/cors";
 import { AuditLogger, ErrorLogger } from "./middlewares/logging";
 import { initNeo4j, closeNeo4j } from "./utils/neo4j";
 import { prisma } from "./utils/prisma";
@@ -17,17 +16,18 @@ const fastify = Fastify({
   ignoreTrailingSlash: true,
 });
 
-// Register CORS plugin
+// Register CORS plugin with proper configuration
 fastify.register(fastifyCors, {
-  origin: "*", // Adjust as needed
-  methods: ["GET", "POST", "OPTIONS"],
+  origin: "*", // In production, restrict this to allowed origins
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // Add any additional HTTP methods you expect
 });
 
+// Register JWT plugin
 fastify.register(fastifyJWT, {
   secret: process.env.JWT_SECRET || "supersecret",
 });
 
-// Register @fastify/swagger plugin.
+// Register Swagger plugin
 fastify.register(fastifySwagger, {
   openapi: {
     info: {
@@ -37,7 +37,9 @@ fastify.register(fastifySwagger, {
     },
     servers: [
       {
-        url: "http://localhost",
+        url: `http://${process.env.HOST || "localhost"}:${
+          process.env.PORT || 8000
+        }`,
       },
     ],
     components: {
@@ -65,7 +67,7 @@ fastify.register(fastifySwagger, {
   },
 });
 
-// Register @fastify/swagger-ui plugin.
+// Register Swagger UI plugin
 fastify.register(fastifySwaggerUI, {
   routePrefix: "/docs",
   uiConfig: {
@@ -76,7 +78,7 @@ fastify.register(fastifySwaggerUI, {
   transformStaticCSP: (header) => header,
 });
 
-// Middleware for logging every request
+// Middleware for logging requests
 fastify.addHook("onRequest", AuditLogger);
 
 // Error handler for logging errors
@@ -95,9 +97,13 @@ fastify.register(
   { prefix: "/api" }
 );
 
+// Start the Fastify server, binding it to 0.0.0.0
 const start = async () => {
   try {
-    await fastify.listen({ port: Number(process.env.PORT) || 8000 });
+    await fastify.listen({
+      port: Number(process.env.PORT) || 8000,
+      host: "0.0.0.0",
+    });
     fastify.swagger();
   } catch (err) {
     fastify.log.error(err);

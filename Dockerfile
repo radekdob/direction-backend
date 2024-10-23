@@ -20,7 +20,7 @@ RUN npx prisma generate
 RUN yarn tsc
 
 # Stage 2: Final image to run the application
-FROM node:slim
+FROM node:22.5.1-slim
 
 # Install OpenSSL in the runtime container as well
 RUN apt-get update && apt-get install -y openssl

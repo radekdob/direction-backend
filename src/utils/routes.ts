@@ -1,7 +1,5 @@
 import type { FastifyInstance } from "fastify";
 import { getAllowedKeywords } from "./keywordService";
-import type { FastifyRequest } from "fastify/types/request";
-import type { FastifyReply } from "fastify/types/reply";
 
 // Define the structure of query parameters
 interface KeywordQueryParams {
@@ -9,19 +7,14 @@ interface KeywordQueryParams {
   locationType: string;
 }
 
+// keywordRoutes.ts
 export default async function keywordRoutes(fastify: FastifyInstance) {
-  fastify.get<{
-    Querystring: KeywordQueryParams;
-  }>(
-    "/keywords",
-    async (
-      request: FastifyRequest<{ Querystring: KeywordQueryParams }>,
-      reply: FastifyReply
-    ) => {
+  fastify.get<{ Querystring: KeywordQueryParams }>(
+    "/",
+    async (request, reply) => {
       const { location, locationType } = request.query;
 
       try {
-        // Use the dynamic location and locationType passed from the query params
         const keywords = await getAllowedKeywords(location, locationType);
         reply.send({ keywords });
       } catch (error) {

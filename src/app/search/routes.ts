@@ -11,6 +11,7 @@ export default async function searchRoutes(fastify: FastifyInstance) {
         type: "object",
         properties: {
           location: { type: "string" },
+          locationType: { type: "string" },
           nodeTypes: {
             type: "array",
             items: { type: "string" },

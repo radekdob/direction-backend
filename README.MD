@@ -20,7 +20,7 @@ Set Up Environment Variables: Create a .env file and populate it with the necess
 ```Bash
 npx prisma init
 ```
-### Prisma Migration (every time when there is schama change):
+### Prisma Migration (every time when there is schema change):
 ```Bash
 yarn prisma migrate dev
 ```
@@ -34,3 +34,24 @@ yarn build
 yarn dev
 ```
 
+
+### Run locally using Docker
+
+Build the image locally with a tag.
+
+```Bash
+docker build -t travelzoom-backend:0.0.1 .
+```
+
+Run the image passing the `--env-file` flag with a valid .env file containing the up to date values. 
+
+```Bash
+docker run -p 8000:8000 --env-file .env -it --rm -d travelzoom-backend:0.0.1
+```
+
+Test it's running by checking the version endpoint.
+
+```Bash
+curl localhost:8000/api/version
+{"version":"0.1.23"}
+```

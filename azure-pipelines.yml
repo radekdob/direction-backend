@@ -37,7 +37,7 @@ stages:
           - task: Docker@2
             displayName: 'Docker Build'
             inputs:
-              containerRegistry: 'TravelZoom'
+              containerRegistry: 'ACR - TravelZoom'
               repository: 'travelzoom-backend'
               command: build
               Dockerfile: Dockerfile
@@ -49,7 +49,7 @@ stages:
           - task: Docker@2
             displayName: 'Docker Push'
             inputs:
-              containerRegistry: 'TravelZoom'
+              containerRegistry: 'ACR - TravelZoom'
               repository: 'travelzoom-backend'
               command: push
               tags: |

@@ -3,7 +3,8 @@ import type { FastifyRequest, FastifyReply } from "fastify";
 import { getLocationsByParams } from "./service";
 
 interface SearchRequestBody {
-  location?: string;
+  location: string;
+  locationType: string;
   nodeTypes?: string[];
   keywords?: string[];
   userInput?: string;
@@ -13,15 +14,18 @@ export async function searchLocationsByParams(
   req: FastifyRequest<{ Body: SearchRequestBody }>,
   reply: FastifyReply
 ) {
-  const { location, nodeTypes, keywords, userInput } = req.body;
+  const { location, locationType, nodeTypes, keywords, userInput } = req.body;
 
   try {
-    const locations = await getLocationsByParams(
+    // Pass a single object containing the parameters
+    const locations = await getLocationsByParams({
       location,
-      nodeTypes || [],
-      keywords || [],
-      userInput || ""
-    );
+      locationType,
+      nodeTypes: nodeTypes || [],
+      keywords: keywords || [],
+      userInput: userInput || "",
+    });
+
     reply.send(locations);
   } catch (error) {
     if (error instanceof Error) {

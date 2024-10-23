@@ -1,10 +1,10 @@
 # Stage 1: Build the application
-FROM node:slim AS build
+FROM node:22.5.1-slim AS build
 
 # Install OpenSSL to satisfy Prisma's dependency
 RUN apt-get update && apt-get install -y openssl
 
-WORKDIR /direction-backend
+WORKDIR /travelzoom-backend
 
 # Copy package.json and yarn.lock to install dependencies
 COPY package.json yarn.lock ./
@@ -25,13 +25,13 @@ FROM node:slim
 # Install OpenSSL in the runtime container as well
 RUN apt-get update && apt-get install -y openssl
 
-WORKDIR /direction-backend
+WORKDIR /travelzoom-backend
 
 # Copy compiled code and dependencies from the build stage
-COPY --from=build /direction-backend/package.json ./
-COPY --from=build /direction-backend/node_modules ./node_modules
-COPY --from=build /direction-backend/build ./build
-COPY --from=build /direction-backend/prisma ./prisma
+COPY --from=build /travelzoom-backend/package.json ./
+COPY --from=build /travelzoom-backend/node_modules ./node_modules
+COPY --from=build /travelzoom-backend/build ./build
+COPY --from=build /travelzoom-backend/prisma ./prisma
 
 # Expose server port (default is 8000)
 EXPOSE 8000

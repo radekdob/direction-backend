@@ -1,44 +1,54 @@
-// search/service.ts
 import { getNeo4jSession } from "../../utils/neo4j";
 import { extractKeywordsFromUserInput } from "../../utils/openai";
 
 interface SearchParams {
-  location?: string;
+  location: string;
+  locationType: string;
   nodeTypes?: string[];
   keywords?: string[];
   userInput?: string;
 }
 
 export async function getLocationsByParams(
-  location?: string,
-  nodeTypes: string[] = [],
-  keywords: string[] = [],
-  userInput: string = ""
+  params: SearchParams
 ): Promise<object[]> {
+  const {
+    location,
+    locationType,
+    nodeTypes = [],
+    keywords = [],
+    userInput = "",
+  } = params;
   const session = getNeo4jSession();
 
   try {
-    // If userInput is provided, extract additional keywords using OpenAI
-    if (userInput.trim() !== "") {
-      const extractedKeywords = await extractKeywordsFromUserInput(userInput);
-      // Merge and deduplicate keywords from frontend and OpenAI
-      keywords = Array.from(new Set([...keywords, ...extractedKeywords]));
-    }
+    // Initialize keywords that will be used for filtering
+    const finalKeywords = userInput.trim()
+      ? Array.from(
+          new Set([
+            ...keywords,
+            ...(await extractKeywordsFromUserInput(
+              userInput,
+              location,
+              locationType
+            )),
+          ])
+        )
+      : keywords;
 
-    // Start building the Cypher query
-    let query = `
-      MATCH (l:Location)
-    `;
+    // Build the base query
+    let query = "MATCH (l:Location)";
 
     // Parameters object for the query
-    const params: Record<string, any> = {};
+    const queryParams: Record<string, any> = {};
 
     // Filter by location if provided
-    if (location && location.trim() !== "") {
+    if (location) {
       query += `
-        MATCH (g:geo_area {name: $location})<-[:IS_IN]-(l)
+        MATCH (g:geo_area {name: $location, type: $locationType})<-[:IS_IN]-(l)
       `;
-      params.location = location;
+      queryParams.location = location;
+      queryParams.locationType = locationType;
     }
 
     // Filter by nodeTypes if provided
@@ -46,41 +56,38 @@ export async function getLocationsByParams(
       query += `
         WHERE ANY(nt IN $nodeTypes WHERE nt IN labels(l))
       `;
-      params.nodeTypes = nodeTypes;
+      queryParams.nodeTypes = nodeTypes;
     }
 
     // Filter by keywords if provided
-    if (keywords.length > 0) {
+    if (finalKeywords.length > 0) {
       query += `
         MATCH (l)<-[:MATCHES]-(k:Keyword)
         WHERE k.name IN $keywords
       `;
-      params.keywords = keywords;
+      queryParams.keywords = finalKeywords;
     }
 
-    // Return distinct locations
+    // Complete the query to return distinct locations
     query += `
       RETURN DISTINCT l
     `;
 
-    const result = await session.run(query, params);
+    const result = await session.run(query, queryParams);
 
-    const locations = result.records.map(
-      (record) => record.get("l").properties
-    );
-    return locations;
+    // Extract location properties and return
+    return result.records.map((record) => record.get("l").properties);
   } catch (error) {
-    if (error instanceof Error) {
-      console.error(`Error querying Neo4j: ${error.message}`);
-      throw new Error(
-        `Failed to retrieve locations from Neo4j: ${error.message}`
-      );
-    } else {
-      console.error("An unknown error occurred while querying Neo4j.");
-      throw new Error(
-        "Failed to retrieve locations from Neo4j due to an unknown error."
-      );
-    }
+    console.error(
+      `Error querying Neo4j: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
+    );
+    throw new Error(
+      `Failed to retrieve locations from Neo4j: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
+    );
   } finally {
     await session.close();
   }

@@ -7,12 +7,24 @@ export async function getAllowedKeywords(
 ): Promise<string[]> {
   const session = getNeo4jSession();
 
-  try {
-    let query = `
-        MATCH (ga:geo_area {name: $state, type: 'state'})<-[:IS_IN]-(l:Experience {state: $state, ${locationType}: $location} )<-[:MATCHES]-(i:Interest)
-        RETURN DISTINCT i.name AS keyword
-    `;
+  let query = "";
 
+  if (location) {
+    location = location.charAt(0).toUpperCase() + location.slice(1);
+    query = `
+    MATCH (ga:geo_area {name: $state, type: 'state'})<-[:IS_IN]-(l:Experience {state: $state, ${locationType}: $location} )<-[:MATCHES]-(i:Interest)
+    RETURN DISTINCT i.name AS keyword
+    `;
+  }
+
+  if (!location) {
+    query = `
+    MATCH (ga:geo_area {name: $state, type: 'state'})<-[:IS_IN]-(l:Experience {state: $state} )<-[:MATCHES]-(i:Interest)
+    RETURN DISTINCT i.name AS keyword
+    `;
+  }
+
+  try {
     const result = await session.run(query, { state, location });
 
     // Map the result to an array of keywords

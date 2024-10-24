@@ -34,43 +34,62 @@ export async function getLocationsByParams(
     // Parameters object for the query
     const queryParams: Record<string, any> = { state };
 
-    if (location) {
-      queryParams.location = location;
-      queryParams.locationType = locationType;
-    }
-
     if (finalKeywords.length > 0) {
       queryParams.keywords = finalKeywords;
     }
 
-    // Build the query for Experience and Attraction
-    let query = `
-      MATCH (g:geo_area {name: $state, type: 'state'})<-[:IS_IN]-(l)
+    let query: string;
+
+    query = `
+          MATCH (g:geo_area {name: 'Alaska', type: 'state'})<-[:IS_IN]-(l)
+          MATCH (l)<-[:MATCHES]-(k:Interest)
+          WHERE k.name IN ['hiking', 'outdoor'] 
+          AND l.city = 'Anchorage'
+          RETURN DISTINCT l
     `;
+
+    // If location is provided, include location and locationType in the query
+    if (location && locationType) {
+      queryParams.location = location;
+      queryParams.locationType = locationType;
+      query = `
+        MATCH (ga:geo_area {name: $state, type: 'state'})<-[:IS_IN]-(l:Experience {state: $state, ${locationType}: $location})
+      `;
+
+      if (finalKeywords.length > 0) {
+        query += `
+          <-[:MATCHES]-(i:Interest)
+          WHERE i.name IN $keywords
+        `;
+      }
+
+      query += `
+        RETURN DISTINCT l, labels(l) AS nodeTypes
+      `;
+    } else {
+      // If location is not provided, query without location and locationType
+      query = `
+        MATCH (ga:geo_area {name: $state, type: 'state'})<-[:IS_IN]-(l:Experience {state: $state})
+      `;
+
+      if (finalKeywords.length > 0) {
+        query += `
+          <-[:MATCHES]-(i:Interest)
+          WHERE i.name IN $keywords
+        `;
+      }
+
+      query += `
+        RETURN DISTINCT l, labels(l) AS nodeTypes
+      `;
+    }
 
     if (nodeTypes.length > 0) {
       query += `
-        WHERE ANY(nt IN $nodeTypes WHERE nt IN labels(l))
+        AND ANY(nt IN $nodeTypes WHERE nt IN labels(l))
       `;
       queryParams.nodeTypes = nodeTypes;
     }
-
-    if (location && locationType) {
-      query += `
-        AND l.${locationType} = $location
-      `;
-    }
-
-    if (finalKeywords.length > 0) {
-      query += `
-        MATCH (l)<-[:MATCHES]-(k:Interest)
-        WHERE k.name IN $keywords
-      `;
-    }
-
-    query += `
-      RETURN DISTINCT l, labels(l) AS nodeTypes
-    `; // Add labels(l) to return node types
 
     const result = await session.run(query, queryParams);
 
@@ -86,7 +105,6 @@ export async function getLocationsByParams(
           `https://maps.google.com/?q=${locationNode.lat},${locationNode.lng}`, // If no web_url, create a Google Maps link
         image: locationNode.image || "", // Use an empty string if image is missing
         markers: [{ lat: locationNode.lat, lng: locationNode.lng }], // Use lat/lng for map markers
-        // Optional fields
         nodeTypes:
           nodeTypesFromResult.length > 0 ? nodeTypesFromResult : undefined, // Include nodeTypes from query result
         keywords: finalKeywords.length > 0 ? finalKeywords : undefined, // Include keywords if provided

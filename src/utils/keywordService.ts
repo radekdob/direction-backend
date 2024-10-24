@@ -11,7 +11,7 @@ export async function getAllowedKeywords(
 
   if (location) {
     query = `
-    MATCH (ga:geo_area {name: $state, type: 'state'})<-[:IS_IN]-(l:Experience {state: $state, ${locationType}: $location} )<-[:MATCHES]-(i:Interest)
+    MATCH (ga:geo_area {name: $state, type: 'state'})<-[:IS_IN]-(l:Experience {state: $state, city: 'Anchorage'} )<-[:MATCHES]-(i:Interest)
     RETURN DISTINCT i.name AS keyword
     `;
   }

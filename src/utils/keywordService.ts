@@ -10,7 +10,6 @@ export async function getAllowedKeywords(
   let query = "";
 
   if (location) {
-    location = location.charAt(0).toUpperCase() + location.slice(1);
     query = `
     MATCH (ga:geo_area {name: $state, type: 'state'})<-[:IS_IN]-(l:Experience {state: $state, ${locationType}: $location} )<-[:MATCHES]-(i:Interest)
     RETURN DISTINCT i.name AS keyword

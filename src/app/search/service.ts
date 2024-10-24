@@ -1,28 +1,23 @@
 import { getNeo4jSession } from "../../utils/neo4j";
 import { extractKeywordsFromUserInput } from "../../utils/openai";
-
-interface SearchParams {
-  location: string;
-  locationType: string;
-  nodeTypes?: string[];
-  keywords?: string[];
-  userInput?: string;
-}
+import type { ItemEntryResponse, SearchParams } from "./types";
 
 export async function getLocationsByParams(
   params: SearchParams
-): Promise<object[]> {
+): Promise<ItemEntryResponse[]> {
   const {
-    location,
-    locationType,
+    state,
+    location = "",
+    locationType = "",
     nodeTypes = [],
     keywords = [],
     userInput = "",
   } = params;
+
   const session = getNeo4jSession();
 
   try {
-    // Initialize keywords that will be used for filtering
+    // Initialize final keywords, merging keywords from user input if provided
     const finalKeywords = userInput.trim()
       ? Array.from(
           new Set([
@@ -36,22 +31,23 @@ export async function getLocationsByParams(
         )
       : keywords;
 
-    // Build the base query
-    let query = "MATCH (l:Location)";
-
     // Parameters object for the query
-    const queryParams: Record<string, any> = {};
+    const queryParams: Record<string, any> = { state };
 
-    // Filter by location if provided
     if (location) {
-      query += `
-        MATCH (g:geo_area {name: $location, type: $locationType})<-[:IS_IN]-(l)
-      `;
       queryParams.location = location;
       queryParams.locationType = locationType;
     }
 
-    // Filter by nodeTypes if provided
+    if (finalKeywords.length > 0) {
+      queryParams.keywords = finalKeywords;
+    }
+
+    // Build the query for Experience and Attraction
+    let query = `
+      MATCH (g:geo_area {name: $state, type: 'state'})<-[:IS_IN]-(l)
+    `;
+
     if (nodeTypes.length > 0) {
       query += `
         WHERE ANY(nt IN $nodeTypes WHERE nt IN labels(l))
@@ -59,24 +55,45 @@ export async function getLocationsByParams(
       queryParams.nodeTypes = nodeTypes;
     }
 
-    // Filter by keywords if provided
-    if (finalKeywords.length > 0) {
+    if (location && locationType) {
       query += `
-        MATCH (l)<-[:MATCHES]-(k:Keyword)
-        WHERE k.name IN $keywords
+        AND l.${locationType} = $location
       `;
-      queryParams.keywords = finalKeywords;
     }
 
-    // Complete the query to return distinct locations
+    if (finalKeywords.length > 0) {
+      query += `
+        MATCH (l)<-[:MATCHES]-(k:Interest)
+        WHERE k.name IN $keywords
+      `;
+    }
+
     query += `
-      RETURN DISTINCT l
-    `;
+      RETURN DISTINCT l, labels(l) AS nodeTypes
+    `; // Add labels(l) to return node types
 
     const result = await session.run(query, queryParams);
 
-    // Extract location properties and return
-    return result.records.map((record) => record.get("l").properties);
+    // Transform results into the ItemEntry format for both Experience and Attraction
+    const items: ItemEntryResponse[] = result.records.map((record) => {
+      const locationNode = record.get("l").properties;
+      const nodeTypesFromResult = record.get("nodeTypes"); // Get the labels from the query result
+
+      return {
+        title: locationNode.name, // 'name' maps to 'title'
+        url:
+          locationNode.web_url ||
+          `https://maps.google.com/?q=${locationNode.lat},${locationNode.lng}`, // If no web_url, create a Google Maps link
+        image: locationNode.image || "", // Use an empty string if image is missing
+        markers: [{ lat: locationNode.lat, lng: locationNode.lng }], // Use lat/lng for map markers
+        // Optional fields
+        nodeTypes:
+          nodeTypesFromResult.length > 0 ? nodeTypesFromResult : undefined, // Include nodeTypes from query result
+        keywords: finalKeywords.length > 0 ? finalKeywords : undefined, // Include keywords if provided
+      };
+    });
+
+    return items;
   } catch (error) {
     console.error(
       `Error querying Neo4j: ${

@@ -6,12 +6,22 @@ export default async function searchRoutes(fastify: FastifyInstance) {
   fastify.post("", {
     schema: {
       description:
-        "Search for locations based on location, node types, keywords, and user input",
+        "Search for locations based on state, location, locationType, node types, keywords, and user input",
       body: {
         type: "object",
         properties: {
-          location: { type: "string" },
-          locationType: { type: "string" },
+          state: {
+            type: "string",
+            description: "The state to filter locations (e.g., 'California')",
+          },
+          location: {
+            type: "string",
+            description: "The location name (e.g., 'Los Angeles')",
+          },
+          locationType: {
+            type: "string",
+            description: "The type of the location (e.g., 'city', 'county')",
+          },
           nodeTypes: {
             type: "array",
             items: { type: "string" },
@@ -27,7 +37,7 @@ export default async function searchRoutes(fastify: FastifyInstance) {
             description: "User input to extract additional keywords",
           },
         },
-        required: [], // No required fields since all are optional
+        required: ["state"], // State is required, others are optional
       },
       response: {
         200: {
@@ -35,9 +45,30 @@ export default async function searchRoutes(fastify: FastifyInstance) {
           items: {
             type: "object",
             properties: {
-              name: { type: "string" },
-              address: { type: "string" },
-              // Add other properties as necessary
+              city: { type: "string" },
+              title: { type: "string" },
+              url: { type: "string" },
+              image: { type: "string", nullable: true },
+              nodeTypes: {
+                type: "array",
+                items: { type: "string" },
+                nullable: true,
+              },
+              keywords: {
+                type: "array",
+                items: { type: "string" },
+                nullable: true,
+              },
+              markers: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    lat: { type: "number" },
+                    lng: { type: "number" },
+                  },
+                },
+              },
             },
           },
         },

@@ -41,8 +41,8 @@ export async function extractKeywordsFromUserInput(
       {
         role: "user",
         content: `Extract up to 10 keywords from the following search string based on the allowed items. Here are the allowed items:
-Keywords: ${allowedKeywords.join(", ")}
-Search String: "${userInput}"`,
+                  Keywords: ${allowedKeywords.join(", ")}
+                  Search String: "${userInput}"`,
       },
     ],
     functions: [

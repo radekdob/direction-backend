@@ -7,6 +7,7 @@ interface KeywordQueryParams {
   state: string;
   location?: string;
   locationType?: string;
+  currentKeywords?: string;
 }
 
 export default async function utilRoutes(fastify: FastifyInstance) {
@@ -25,6 +26,7 @@ export default async function utilRoutes(fastify: FastifyInstance) {
             state: { type: "string" },
             location: { type: "string" },
             locationType: { type: "string" },
+            currentKeywords: { type: "string" },
           },
         },
         response: {
@@ -41,13 +43,14 @@ export default async function utilRoutes(fastify: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const { state, location, locationType } = request.query;
+      const { state, location, locationType, currentKeywords } = request.query;
 
       try {
         const keywords = await getAllowedKeywords(
           state,
           location,
-          locationType
+          locationType,
+          currentKeywords
         );
         reply.send({ keywords });
       } catch (error) {

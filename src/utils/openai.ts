@@ -12,9 +12,10 @@ interface OpenAIResponse {
 }
 
 export async function extractKeywordsFromUserInput(
+  state: string,
   userInput: string,
-  location: string,
-  locationType: string
+  location?: string,
+  locationType?: string
 ): Promise<string[]> {
   const apiUrl = "https://api.openai.com/v1/chat/completions";
   const apiKey = process.env.OPENAI_API_KEY;
@@ -24,7 +25,7 @@ export async function extractKeywordsFromUserInput(
   }
 
   // Fetch allowed keywords dynamically from Neo4j
-  const allowedKeywords = await getAllowedKeywords(location, locationType);
+  const allowedKeywords = await getAllowedKeywords(state);
 
   if (allowedKeywords.length === 0) {
     throw new Error("No allowed keywords found in the database.");
@@ -36,7 +37,7 @@ export async function extractKeywordsFromUserInput(
   };
 
   const requestBody = {
-    model: "gpt-4", // Ensure you use the correct and available model
+    model: "gpt-4o-mini", // Ensure you use the correct and available model
     messages: [
       {
         role: "user",

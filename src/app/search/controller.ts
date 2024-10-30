@@ -3,15 +3,6 @@ import type { FastifyRequest, FastifyReply } from "fastify";
 import { getLocationsByParams } from "./service";
 import type { SearchParams, ItemEntryResponse } from "./types";
 
-interface SearchRequestBody {
-  state: string; // State is required
-  location?: string; // Location is optional
-  locationType?: string; // LocationType is optional
-  nodeTypes?: string[]; // Optional node types
-  keywords?: string[]; // Optional keywords
-  userInput?: string; // Optional user input
-}
-
 export async function searchLocationsByParams(
   req: FastifyRequest<{ Body: SearchParams }>,
   reply: FastifyReply
@@ -23,11 +14,11 @@ export async function searchLocationsByParams(
     // Call getLocationsByParams with the state and other parameters
     const locations: ItemEntryResponse[] = await getLocationsByParams({
       state,
-      location: location || "", // Default to empty string if not provided
-      locationType: locationType || "", // Default to empty string if not provided
-      nodeTypes: nodeTypes || [], // Default to empty array if not provided
-      keywords: keywords || [], // Default to empty array if not provided
-      userInput: userInput || "", // Default to empty string if not provided
+      location: location,
+      locationType: locationType,
+      nodeTypes: nodeTypes,
+      keywords: keywords,
+      userInput: userInput,
     });
 
     // Send the response with the retrieved locations in the format of ItemEntry[]

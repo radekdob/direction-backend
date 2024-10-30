@@ -2,14 +2,16 @@ import { getNeo4jSession } from "../../utils/neo4j";
 import { extractKeywordsFromUserInput } from "../../utils/openai";
 import type { ItemEntryResponse, SearchParams } from "./types";
 
+// Note for future: location and locationType are not used as decision made by user
+
 export async function getLocationsByParams(
   params: SearchParams
 ): Promise<ItemEntryResponse[]> {
   const {
     state,
-    location = "",
-    locationType = "",
-    nodeTypes = [],
+    location,
+    locationType,
+    nodeTypes,
     keywords = [],
     userInput = "",
   } = params;
@@ -18,80 +20,28 @@ export async function getLocationsByParams(
 
   try {
     // Initialize final keywords, merging keywords from user input if provided
-    const finalKeywords = userInput.trim()
-      ? Array.from(
-          new Set([
-            ...keywords,
-            ...(await extractKeywordsFromUserInput(
-              userInput,
-              location,
-              locationType
-            )),
-          ])
-        )
-      : keywords;
+    const finalKeywords = (
+      userInput.trim()
+        ? Array.from(
+            new Set([
+              ...keywords,
+              ...(await extractKeywordsFromUserInput(userInput, state)),
+            ])
+          )
+        : keywords
+    ).map((keyword) => keyword.toLowerCase());
 
-    // Parameters object for the query
-    const queryParams: Record<string, any> = { state };
-
-    if (finalKeywords.length > 0) {
-      queryParams.keywords = finalKeywords;
-    }
-
-    let query: string;
-
-    query = `
-          MATCH (g:geo_area {name: 'Alaska', type: 'state'})<-[:IS_IN]-(l)
-          MATCH (l)<-[:MATCHES]-(k:Interest)
-          WHERE k.name IN ['hiking', 'outdoor'] 
-          AND l.city = 'Anchorage'
-          RETURN DISTINCT l
+    const query = `
+      MATCH (g:geo_area {name: $state, type: 'state'})<-[:IS_IN]-(l)
+      MATCH (l)<-[:MATCHES]-(k:Interest)
+      WHERE k.name IN  $keywords
+      RETURN DISTINCT l, labels(l) AS nodeTypes
     `;
-
-    // If location is provided, include location and locationType in the query
-    if (location && locationType) {
-      queryParams.location = location;
-      queryParams.locationType = locationType;
-      query = `
-        MATCH (ga:geo_area {name: $state, type: 'state'})<-[:IS_IN]-(l:Experience {state: $state, ${locationType}: $location})
-      `;
-
-      if (finalKeywords.length > 0) {
-        query += `
-          <-[:MATCHES]-(i:Interest)
-          WHERE i.name IN $keywords
-        `;
-      }
-
-      query += `
-        RETURN DISTINCT l, labels(l) AS nodeTypes
-      `;
-    } else {
-      // If location is not provided, query without location and locationType
-      query = `
-        MATCH (ga:geo_area {name: $state, type: 'state'})<-[:IS_IN]-(l:Experience {state: $state})
-      `;
-
-      if (finalKeywords.length > 0) {
-        query += `
-          <-[:MATCHES]-(i:Interest)
-          WHERE i.name IN $keywords
-        `;
-      }
-
-      query += `
-        RETURN DISTINCT l, labels(l) AS nodeTypes
-      `;
-    }
-
-    if (nodeTypes.length > 0) {
-      query += `
-        AND ANY(nt IN $nodeTypes WHERE nt IN labels(l))
-      `;
-      queryParams.nodeTypes = nodeTypes;
-    }
-
-    const result = await session.run(query, queryParams);
+    console.log(finalKeywords);
+    const result = await session.run(query, {
+      state,
+      keywords: finalKeywords,
+    });
 
     // Transform results into the ItemEntry format for both Experience and Attraction
     const items: ItemEntryResponse[] = result.records.map((record) => {
@@ -106,7 +56,9 @@ export async function getLocationsByParams(
         image: locationNode.image || "", // Use an empty string if image is missing
         markers: [{ lat: locationNode.lat, lng: locationNode.lng }], // Use lat/lng for map markers
         nodeTypes:
-          nodeTypesFromResult.length > 0 ? nodeTypesFromResult : undefined, // Include nodeTypes from query result
+          nodeTypesFromResult && nodeTypesFromResult.length > 0
+            ? nodeTypesFromResult
+            : undefined, // Include nodeTypes from query result
         keywords: finalKeywords.length > 0 ? finalKeywords : undefined, // Include keywords if provided
       };
     });

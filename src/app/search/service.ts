@@ -1,5 +1,6 @@
 import { getNeo4jSession } from "../../utils/neo4j";
 import { extractKeywordsFromUserInput } from "../../utils/openai";
+import { createPlaceId } from "../../utils/place_id";
 import type { ItemEntryResponse, SearchParams } from "./types";
 
 // Note for future: location and locationType are not used as decision made by user
@@ -47,13 +48,30 @@ export async function getLocationsByParams(
     const items: ItemEntryResponse[] = result.records.map((record) => {
       const locationNode = record.get("l").properties;
       const nodeTypesFromResult = record.get("nodeTypes"); // Get the labels from the query result
-
+      
+      const descLength = Math.floor(Math.random() * (300 - 30 + 1)) + 30;
+      const titleLength = Math.floor(Math.random() * (100 - 30 + 1)) + 30;
+      const randomDesc = `[Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum non dolor et tellus mollis tincidunt. Quisque lacinia lorem nec tortor ullamcorper dictum. Etiam commodo pretium viverra. Duis accumsan lacus et lectus pellentesque, eu commodo risus finibus. Nullam at ante magna. Duis eu nulla tempor urna tincidunt mattis at in ipsum. Maecenas ultrices faucibus lorem, vel vulputate nulla vulputate sed. Nunc at dui eros.`.slice(0, descLength);
+      const randomTitle = 'Spectacular Alaska Adventure with Amazing Views and Activities'.slice(0, titleLength);
+  
       return {
-        title: locationNode.name, // 'name' maps to 'title'
+        id: createPlaceId({
+          title: locationNode.name || randomTitle,
+          lat: locationNode.lat,
+          lng: locationNode.lng
+        }),
+        city: locationNode.city || 'city',
+        title: locationNode.name || randomTitle, // 'name' maps to 'title',
+        description: randomDesc,
+
+        owner:{
+          avatarUrl: `https://picsum.photos/${200 + Math.floor(Math.random() * 50)}/${150 + Math.floor(Math.random() * 50)}`,
+          name: 'Visit Anchorage'
+        },
         url:
           locationNode.web_url ||
           `https://maps.google.com/?q=${locationNode.lat},${locationNode.lng}`, // If no web_url, create a Google Maps link
-        image: locationNode.image || "", // Use an empty string if image is missing
+        image: locationNode.image || `https://picsum.photos/${800 + Math.floor(Math.random() * 200)}/${600 + Math.floor(Math.random() * 200)}`, // Use an empty string if image is missing
         markers: [{ lat: locationNode.lat, lng: locationNode.lng }], // Use lat/lng for map markers
         nodeTypes:
           nodeTypesFromResult && nodeTypesFromResult.length > 0

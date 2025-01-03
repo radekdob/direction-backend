@@ -5,15 +5,16 @@ import { ItemEntryResponse } from "../app/search/types";
  * @param item ItemEntryResponse object containing place details
  * @returns string A base64 encoded unique identifier
  */
-export function createPlaceId(item: ItemEntryResponse): string {
-  // Get the first marker if it exists
-  const marker = item.markers?.[0];
-  
+export function createPlaceId(properties: {
+  title: string;
+  lat?: number;
+  lng?: number;
+}): string {
   // Create a string combining title and coordinates if they exist
   const idString = [
-    item.title,
-    marker?.lat?.toString() || '',
-    marker?.lng?.toString() || ''
+    properties.title,
+    properties.lat?.toString() || '',
+    properties.lng?.toString() || ''
   ].filter(Boolean).join('§§§');
   
   // Encode to base64 and remove any non-URL-safe characters

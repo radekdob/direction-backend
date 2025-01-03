@@ -45,7 +45,9 @@ export default async function searchRoutes(fastify: FastifyInstance) {
           items: {
             type: "object",
             properties: {
+              id: { type: "string" },
               city: { type: "string" },
+              description: { type: "string", nullable: true },
               title: { type: "string" },
               url: { type: "string" },
               image: { type: "string", nullable: true },
@@ -68,7 +70,15 @@ export default async function searchRoutes(fastify: FastifyInstance) {
                     lng: { type: "number" },
                   },
                 },
+                nullable: true
               },
+              owner: {
+                type: "object",
+                properties: {
+                  avatarUrl: { type: "string" },
+                  name: { type: "string" }
+                }
+              }
             },
           },
         },

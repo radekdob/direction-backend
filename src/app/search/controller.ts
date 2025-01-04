@@ -1,6 +1,6 @@
 // search/controller.ts
 import type { FastifyRequest, FastifyReply } from "fastify";
-import { getLocationsByParams } from "./service";
+import { getLocationsByParams, getLocationById } from "./service";
 import type { SearchParams, ItemEntryResponse } from "./types";
 
 export async function searchLocationsByParams(
@@ -31,5 +31,31 @@ export async function searchLocationsByParams(
       req.log.error({ err: error }, "Unknown error in searchLocationsByParams");
       reply.status(500).send({ error: "An unknown error occurred." });
     }
+  }
+}
+
+export async function findLocationById(
+  req: FastifyRequest<{
+    Params: {
+      id: string;
+    };
+  }>,
+  reply: FastifyReply
+) {
+  try {
+    const { id } = req.params;
+    const location = await getLocationById(id);
+
+    if (!location) {
+      reply.status(404).send({ error: "Location not found" });
+      return;
+    }
+
+    reply.send(location);
+  } catch (error) {
+    req.log.error({ err: error }, "Error in findLocationById");
+    reply.status(500).send({ 
+      error: error instanceof Error ? error.message : "An unknown error occurred" 
+    });
   }
 }

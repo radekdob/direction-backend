@@ -1,6 +1,6 @@
 // search/routes.ts
 import type { FastifyInstance } from "fastify";
-import { searchLocationsByParams } from "./controller";
+import { searchLocationsByParams, findLocationById } from "./controller";
 
 export default async function searchRoutes(fastify: FastifyInstance) {
   fastify.post("", {
@@ -85,5 +85,69 @@ export default async function searchRoutes(fastify: FastifyInstance) {
       },
     },
     handler: searchLocationsByParams,
+  })
+
+  fastify.get("/:id", {
+    schema: {
+      description: "Get a location by its ID",
+      params: {
+        type: "object",
+        required: ["id"],
+        properties: {
+          id: {
+            type: "string",
+            description: "The location ID"
+          }
+        }
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            id: { type: "string" },
+            city: { type: "string" },
+            description: { type: "string", nullable: true },
+            title: { type: "string" },
+            url: { type: "string" },
+            image: { type: "string", nullable: true },
+            nodeTypes: {
+              type: "array",
+              items: { type: "string" },
+              nullable: true,
+            },
+            keywords: {
+              type: "array",
+              items: { type: "string" },
+              nullable: true,
+            },
+            markers: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  lat: { type: "number" },
+                  lng: { type: "number" },
+                },
+              },
+              nullable: true
+            },
+            owner: {
+              type: "object",
+              properties: {
+                avatarUrl: { type: "string" },
+                name: { type: "string" }
+              }
+            }
+          }
+        },
+        404: {
+          type: "object",
+          properties: {
+            error: { type: "string" }
+          }
+        }
+      }
+    },
+    handler: findLocationById
   });
 }

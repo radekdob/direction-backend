@@ -38,7 +38,6 @@ export async function getLocationsByParams(
       WHERE k.name IN  $keywords
       RETURN DISTINCT l, labels(l) AS nodeTypes
     `;
-    console.log(finalKeywords);
     const result = await session.run(query, {
       state,
       keywords: finalKeywords,
@@ -46,7 +45,6 @@ export async function getLocationsByParams(
 
     // Transform results into the ItemEntry format for both Experience and Attraction
     const items: ItemEntryResponse[] = result.records.map((record) => {
-      console.log(record)
       const locationNode = record.get("l").properties;
       const locationId = record.get("l").elementId;
       const nodeTypesFromResult = record.get("nodeTypes"); // Get the labels from the query result
@@ -55,7 +53,8 @@ export async function getLocationsByParams(
       const titleLength = Math.floor(Math.random() * (100 - 30 + 1)) + 30;
       const randomDesc = `[Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum non dolor et tellus mollis tincidunt. Quisque lacinia lorem nec tortor ullamcorper dictum. Etiam commodo pretium viverra. Duis accumsan lacus et lectus pellentesque, eu commodo risus finibus. Nullam at ante magna. Duis eu nulla tempor urna tincidunt mattis at in ipsum. Maecenas ultrices faucibus lorem, vel vulputate nulla vulputate sed. Nunc at dui eros.`.slice(0, descLength);
       const randomTitle = 'Spectacular Alaska Adventure with Amazing Views and Activities'.slice(0, titleLength);
-  
+      const markers = (locationNode.lat !=="null" && locationNode.lng !=='null') ? [{ lat: locationNode.lat, lng: locationNode.lng }] : [];
+
       return {
        /*  id: createPlaceId({
           title: locationNode.name || randomTitle,
@@ -75,7 +74,7 @@ export async function getLocationsByParams(
           locationNode.web_url ||
           `https://maps.google.com/?q=${locationNode.lat},${locationNode.lng}`, // If no web_url, create a Google Maps link
         image: locationNode.image || `https://picsum.photos/${800 + Math.floor(Math.random() * 200)}/${600 + Math.floor(Math.random() * 200)}`, // Use an empty string if image is missing
-        markers: [{ lat: locationNode.lat, lng: locationNode.lng }], // Use lat/lng for map markers
+        markers,
         nodeTypes:
           nodeTypesFromResult && nodeTypesFromResult.length > 0
             ? nodeTypesFromResult

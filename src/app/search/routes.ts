@@ -68,9 +68,9 @@ export default async function searchRoutes(fastify: FastifyInstance) {
                   properties: {
                     lat: { type: "number" },
                     lng: { type: "number" },
-                  },
+                  },            
                 },
-                nullable: true
+                nullable: false
               },
               owner: {
                 type: "object",

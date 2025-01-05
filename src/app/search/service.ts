@@ -67,13 +67,13 @@ export async function getLocationsByParams(
         description: randomDesc,
 
         owner:{
-          avatarUrl: `https://picsum.photos/${200 + Math.floor(Math.random() * 50)}/${150 + Math.floor(Math.random() * 50)}`,
+          avatarUrl: `https://picsum.photos/100/100`,
           name: 'Visit Anchorage'
         },
         url:
           locationNode.web_url ||
           `https://maps.google.com/?q=${locationNode.lat},${locationNode.lng}`, // If no web_url, create a Google Maps link
-        image: locationNode.image || `https://picsum.photos/${800 + Math.floor(Math.random() * 200)}/${600 + Math.floor(Math.random() * 200)}`, // Use an empty string if image is missing
+        image: locationNode.image || `https://picsum.photos/500/${Math.floor(Math.random() * 501) + 400}`, // Use random height between 400-900 with fixed width of 500
         markers,
         nodeTypes:
           nodeTypesFromResult && nodeTypesFromResult.length > 0

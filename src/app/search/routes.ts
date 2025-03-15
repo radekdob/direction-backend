@@ -1,10 +1,10 @@
 // search/routes.ts
 import type { FastifyInstance } from "fastify";
-import { searchLocationsByParams, findLocationById } from "./controller";
+import { findLocationById, searchPoiByParams } from "./controller";
 
 export default async function searchRoutes(fastify: FastifyInstance) {
   fastify.post("", {
-    schema: {
+    /* schema: {
       description:
         "Search for locations based on state, location, locationType, node types, keywords, and user input",
       body: {
@@ -83,8 +83,8 @@ export default async function searchRoutes(fastify: FastifyInstance) {
           },
         },
       },
-    },
-    handler: searchLocationsByParams,
+    }, */
+    handler: searchPoiByParams,
   })
 
   fastify.get("/:id", {

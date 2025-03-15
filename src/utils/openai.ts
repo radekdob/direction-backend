@@ -1,6 +1,9 @@
 import axios, { AxiosError } from "axios";
 import { getAllowedKeywords } from "./keywordService";
-
+import { PoiSearchResponse, PoiLLM, Poi } from "../app/search/types-v2";
+import OpenAI from "openai";
+import { zodResponseFormat } from "openai/helpers/zod";
+import { z } from "zod";
 interface OpenAIResponse {
   choices: Array<{
     message: {
@@ -103,4 +106,67 @@ export async function extractKeywordsFromUserInput(
       "Failed to extract keywords from OpenAI due to an unknown error."
     );
   }
+}
+
+export async function searchPoiByOpenAI(
+  userInput: string,
+): Promise<PoiSearchResponse> {
+  const apiKey = process.env.OPENAI_API_KEY;
+
+  if (!apiKey) {
+    throw new Error("OpenAI API key is not set in environment variables.");
+  }
+
+  const client = new OpenAI();
+
+  const PoiLLM = z.object({
+    name: z.string(),
+    lng: z.number(),
+    lat: z.number(),
+    description: z.string(),
+    imageUrl: z.string(),
+    url: z.string(),
+  });
+
+  const FindPoiEvent = z.object({
+    items: z.array(PoiLLM),
+  });
+
+  const completion = await client.chat.completions.create({
+    model: "gpt-4o-mini-search-preview",
+    web_search_options: {
+
+    },
+    messages: [
+      {
+        role: "user",
+        content: userInput,
+      },
+      {
+        role: "assistant",
+        content: `Based on the user input, provide a list of places to visit. 
+For the imageUrl field, please provide a valid, publicly accessible image URL that shows the actual place.
+Use image URLs from reliable sources like Unsplash, Pexels or official tourism websites, or other public repositories.
+Do not generate or make up image URLs - only use real, accessible URLs for existing images. Don't use url from url field as imageUrl.`,
+      },
+     
+    ],
+    response_format: zodResponseFormat(FindPoiEvent, "event"),
+  });
+
+  const parsedContent = JSON.parse(completion.choices[0].message.content as any);
+  const pois: Poi[] = parsedContent.items.map((item: PoiLLM, index: number) => ({
+    ...item,
+    id: `poi-${new Date().getTime().toString()}-${index}`,
+    owner: {
+      avatarUrl: "https://picsum.photos/id/71/200/200",
+      name: "Lucas Oliveira",
+    },
+    keywords:  []
+  }));
+  
+  return {
+    items: pois,
+  };
+
 }

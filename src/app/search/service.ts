@@ -1,9 +1,18 @@
 import { getNeo4jSession } from "../../utils/neo4j";
-import { extractKeywordsFromUserInput } from "../../utils/openai";
+import { extractKeywordsFromUserInput, searchPoiByOpenAI } from "../../utils/openai";
 import { createPlaceId } from "../../utils/place_id";
 import type { ItemEntryResponse, SearchParams } from "./types";
+import { PoiSearchResponse } from "./types-v2";
+import { PoiSearchParams } from "./types-v2";
 
-// Note for future: location and locationType are not used as decision made by user
+
+export async function getPoiByParams(
+  params: PoiSearchParams
+): Promise<PoiSearchResponse> {
+  const { queryInput } = params;
+  const poiSearchResponse = await searchPoiByOpenAI(queryInput);
+  return poiSearchResponse;
+}
 
 export async function getLocationsByParams(
   params: SearchParams
@@ -54,6 +63,7 @@ export async function getLocationsByParams(
       const randomDesc = `[Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum non dolor et tellus mollis tincidunt. Quisque lacinia lorem nec tortor ullamcorper dictum. Etiam commodo pretium viverra. Duis accumsan lacus et lectus pellentesque, eu commodo risus finibus. Nullam at ante magna. Duis eu nulla tempor urna tincidunt mattis at in ipsum. Maecenas ultrices faucibus lorem, vel vulputate nulla vulputate sed. Nunc at dui eros.`.slice(0, descLength);
       const randomTitle = 'Spectacular Alaska Adventure with Amazing Views and Activities'.slice(0, titleLength);
       const markers = (locationNode.lat !=="null" && locationNode.lng !=='null') ? [{ lat: locationNode.lat, lng: locationNode.lng }] : [];
+
 
       return {
        /*  id: createPlaceId({
@@ -123,7 +133,7 @@ export async function getLocationById(id: string): Promise<ItemEntryResponse | n
 
     const descLength = Math.floor(Math.random() * (300 - 30 + 1)) + 30;
     const titleLength = Math.floor(Math.random() * (100 - 30 + 1)) + 30;
-    const randomDesc = `Lorem ipsum dolor sit amet...`.slice(0, descLength);
+    const randomDesc = `[Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum non dolor et tellus mollis tincidunt. Quisque lacinia lorem nec tortor ullamcorper dictum. Etiam commodo pretium viverra. Duis accumsan lacus et lectus pellentesque, eu commodo risus finibus. Nullam at ante magna. Duis eu nulla tempor urna tincidunt mattis at in ipsum. Maecenas ultrices faucibus lorem, vel vulputate nulla vulputate sed. Nunc at dui eros.`.slice(0, descLength);
     const randomTitle = 'Spectacular Alaska Adventure with Amazing Views and Activities'.slice(0, titleLength);
 
     return {
@@ -136,7 +146,12 @@ export async function getLocationById(id: string): Promise<ItemEntryResponse | n
         name: 'Visit Anchorage'
       },
       url: locationNode.web_url || `https://maps.google.com/?q=${locationNode.lat},${locationNode.lng}`,
-      image: locationNode.image || `https://picsum.photos/${800 + Math.floor(Math.random() * 200)}/${600 + Math.floor(Math.random() * 200)}`,
+      image: locationNode.image || (() => {
+        const isPortrait = Math.random() < 0.5; // 30% chance of portrait
+        const width = isPortrait ? 800 : 1600;
+        const height = isPortrait ? 1200 : 900; // 16:9 for landscape, 2:3 for portrait
+        return `https://picsum.photos/${width}/${height}`;
+      })(),
       markers: [{ lat: locationNode.lat, lng: locationNode.lng }],
       nodeTypes: nodeTypesFromResult?.length > 0 ? nodeTypesFromResult : undefined,
       keywords: undefined

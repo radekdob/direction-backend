@@ -132,7 +132,7 @@ export async function searchPoiByOpenAI(
     items: z.array(PoiLLM),
   });
 
-  const completion = await client.chat.completions.create({
+  /* const completion = await client.chat.completions.create({
     model: "gpt-4o-mini-search-preview",
     web_search_options: {
 
@@ -149,12 +149,79 @@ For the imageUrl field, please provide a valid, publicly accessible image URL th
 Use image URLs from reliable sources like Unsplash, Pexels or official tourism websites, or other public repositories.
 Do not generate or make up image URLs - only use real, accessible URLs for existing images. Don't use url from url field as imageUrl.`,
       },
-     
+
     ],
     response_format: zodResponseFormat(FindPoiEvent, "event"),
   });
+  const parsedContent = JSON.parse(completion.choices[0].message.content as any); */
 
-  const parsedContent = JSON.parse(completion.choices[0].message.content as any);
+  const response = await client.responses.create({
+    model: "gpt-4o-mini",
+    //include: ['computer_call_output.output.image_url'],
+    tools: [{ 
+      type: "web_search_preview",
+     // search_context_size: "high",
+    }],
+    text: {
+      format: {
+        type: "json_schema",
+        name: "event",
+        schema: {
+          type: "object",
+          properties: {
+            items: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  name: {
+                    type: "string"
+                  },
+                  lng: {
+                    type: "number"
+                  },
+                  lat: {
+                    type: "number"
+                  },
+                  description: {
+                    type: "string"
+                  },
+                  imageUrl: {
+                    type: "string"
+                  },
+                  url: {
+                    type: "string"
+                  }
+                },
+                required: ["name", "lng", "lat", "description", "imageUrl", "url"],
+                additionalProperties: false
+              }
+            }
+          },
+          required: ["items"],
+          additionalProperties: false
+        }
+      }
+    },
+    input: [
+      {
+        role: "user",
+        content: userInput,
+      },
+      {
+        role: "assistant",
+        content: `Based on the user input, provide a list of places to visit. 
+For the imageUrl field, please provide a valid, publicly accessible image URL that shows the actual place.
+Use image URLs from official tourism websites travel blogs, or other public repositories. Check if the image is available on the web.
+Do not generate or make up image URLs - only use real, accessible URLs for existing images. Don't use url from url field as imageUrl.`,
+      },
+    ],
+
+  });
+
+
+  const parsedContent = JSON.parse(response.output_text);
+
   const pois: Poi[] = parsedContent.items.map((item: PoiLLM, index: number) => ({
     ...item,
     id: `poi-${new Date().getTime().toString()}-${index}`,
@@ -162,11 +229,12 @@ Do not generate or make up image URLs - only use real, accessible URLs for exist
       avatarUrl: "https://picsum.photos/id/71/200/200",
       name: "Lucas Oliveira",
     },
-    keywords:  []
-  }));
-  
+    keywords: []
+  })); 
+
   return {
     items: pois,
+    //items: [],
   };
 
 }

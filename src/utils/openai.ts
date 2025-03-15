@@ -2,8 +2,10 @@ import axios, { AxiosError } from "axios";
 import { getAllowedKeywords } from "./keywordService";
 import { PoiSearchResponse, PoiLLM, Poi } from "../app/search/types-v2";
 import OpenAI from "openai";
+import { tavily } from "@tavily/core";
 import { zodResponseFormat } from "openai/helpers/zod";
 import { z } from "zod";
+import { fetchUnsplashImages } from "./unsplash";
 interface OpenAIResponse {
   choices: Array<{
     message: {
@@ -117,9 +119,12 @@ export async function searchPoiByOpenAI(
     throw new Error("OpenAI API key is not set in environment variables.");
   }
 
+
+
+
   const client = new OpenAI();
 
-  const PoiLLM = z.object({
+  /* const PoiLLM = z.object({
     name: z.string(),
     lng: z.number(),
     lat: z.number(),
@@ -130,7 +135,7 @@ export async function searchPoiByOpenAI(
 
   const FindPoiEvent = z.object({
     items: z.array(PoiLLM),
-  });
+  }); */
 
   /* const completion = await client.chat.completions.create({
     model: "gpt-4o-mini-search-preview",
@@ -155,12 +160,12 @@ Do not generate or make up image URLs - only use real, accessible URLs for exist
   });
   const parsedContent = JSON.parse(completion.choices[0].message.content as any); */
 
-  const response = await client.responses.create({
+  /* const response = await client.responses.create({
     model: "gpt-4o-mini",
     //include: ['computer_call_output.output.image_url'],
-    tools: [{ 
+    tools: [{
       type: "web_search_preview",
-     // search_context_size: "high",
+      // search_context_size: "high",
     }],
     text: {
       format: {
@@ -217,11 +222,96 @@ Do not generate or make up image URLs - only use real, accessible URLs for exist
       },
     ],
 
+  }); */
+
+  const response = await client.responses.create({
+    model: "gpt-4o-mini",
+    //include: ['computer_call_output.output.image_url'],
+    tools: [{
+      type: "web_search_preview",
+      // search_context_size: "high",
+    }],
+    text: {
+      format: {
+        type: "json_schema",
+        name: "event",
+        schema: {
+          type: "object",
+          properties: {
+            items: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  name: {
+                    type: "string"
+                  },
+                  lng: {
+                    type: "number"
+                  },
+                  lat: {
+                    type: "number"
+                  },
+                  description: {
+                    type: "string"
+                  },
+            
+                  url: {
+                    type: "string"
+                  }
+                },
+                required: ["name", "lng", "lat", "description", "url"],
+                additionalProperties: false
+              }
+            }
+          },
+          required: ["items"],
+          additionalProperties: false
+        }
+      }
+    },
+    input: [
+      {
+        role: "user",
+        content: userInput,
+      },
+      {
+        role: "assistant",
+        content: `Based on the user input, provide a list of places to visit. 
+For the imageUrl field, please provide a valid, publicly accessible image URL that shows the actual place.
+Use image URLs from official tourism websites travel blogs, or other public repositories. Check if the image is available on the web.
+Do not generate or make up image URLs - only use real, accessible URLs for existing images. Don't use url from url field as imageUrl.`,
+      },
+    ],
+
   });
 
 
   const parsedContent = JSON.parse(response.output_text);
 
+  // const tvly = tavily({ apiKey: "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" });
+  const locationMetadata = parsedContent.items.map((item: PoiLLM) => ({
+    name: item.name,
+    lng: item.lng,
+    lat: item.lat,
+  }));
+  console.log(locationMetadata);
+  // const tavResponse = await tvly.search(
+  //   `For provided locations provide image file urls showing the location. Keep correct order.
+  //   Locations: ${locationMetadata.map((loc: { name: string; lat: number; lng: number }) => `${loc.name} (${loc.lat}, ${loc.lng})`).join('|')}`,
+  //   {
+
+  //     includeImages: true,
+
+  //     maxResults: locationMetadata.length
+  //   });
+  //console.log(tavResponse);
+
+  const locationNames = parsedContent.items.map((item: PoiLLM) => item.name);
+  const imagePromises = locationNames.map((name: string) => fetchUnsplashImages(name));
+  const images = await Promise.all(imagePromises);
+
+  
   const pois: Poi[] = parsedContent.items.map((item: PoiLLM, index: number) => ({
     ...item,
     id: `poi-${new Date().getTime().toString()}-${index}`,
@@ -229,8 +319,10 @@ Do not generate or make up image URLs - only use real, accessible URLs for exist
       avatarUrl: "https://picsum.photos/id/71/200/200",
       name: "Lucas Oliveira",
     },
+  //  imageUrl: tavResponse?.images?.[index]?.url || '',
+    imageUrl: images[index]?.[0]?.urls?.regular || '',
     keywords: []
-  })); 
+  }));
 
   return {
     items: pois,

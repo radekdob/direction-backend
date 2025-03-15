@@ -16,6 +16,7 @@
     "@fastify/swagger": "^8.15.0",
     "@fastify/swagger-ui": "^4.1.0",
     "@prisma/client": "^5.19.1",
+    "@tavily/core": "^0.3.1",
     "@types/axios": "^0.14.0",
     "axios": "^1.7.7",
     "bcrypt": "^5.1.1",

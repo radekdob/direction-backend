@@ -28,4 +28,5 @@ export type PoiSearchResponse = {
     keywords: string[];
     suggestedKeywords: string[];
     locations: string[];
+    type: 'initial' | 'followup';
 }

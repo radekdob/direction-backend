@@ -155,22 +155,57 @@ export async function searchPoiByOpenAI(
   const initialSearchInput: ResponseInput = [
     {
       role: "user",
-      content: queryInput,
+      content: `User input:\n """${queryInput}"""`,
     },
     {
       role: "assistant",
-      content: `Based on the user input, extract the keywords. Example keywords: "beach", "mountains", "city", "glaciers" etc.` +
-        ` Basing on extracted keywords, provide a list of suggested keywords. Example suggested keywords: "beach", "mountains", "city", "glaciers" etc.`
+      content: `From the user input:\n ` +
+        "Step 1: Extract the keywords.\n" +
+        "Step 2: Extract the locations of travel destinations. If input does not contain information about locations use empty array as value.\n" +
+        "Step 3: Suggest suggestedKeywords based on the keywords and locations.\n\n" +
+        
+        "Example output for input(with location info) 'I want to visit a tropical beach in Europe': \n{\n  \"keywords\": [\"tropical beaches\", \"historic cities\", \"kids activities\"],\n  \"locations\": [\"Europe\"],\n  \"suggestedKeywords\": [\"beaches\", \"tropical\", \"historic sites\", \"family-friendly\", \"kids' activities\"]\n}\n" +
+        "Example output for input(without location info) 'I want to visit a tropical beach': \n{\n  \"keywords\": [\"tropical beaches\", \"historic cities\", \"kids activities\"],\n  \"locations\": [],\n  \"suggestedKeywords\": [\"beaches\", \"tropical\", \"historic sites\", \"family-friendly\", \"kids' activities\"]\n}\n" 
+        
+        //"Example Output without extracted locations: \n{\n  \"keywords\": [\"tropical beaches\", \"historic cities\", \"kids activities\"],\n  \"locations\": [],\n  \"suggestedKeywords\": [\"beaches\", \"tropical\", \"historic sites\", \"family-friendly\", \"kids' activities\"]\n}\n" +
+        //"Example Output with extracted locations: \n{\n  \"keywords\": [\"glaciers\", \"waterfalls\"],\n  \"locations\": [\"North America\"],\n  \"suggestedKeywords\": [\"glaciers\", \"waterfalls\", \"hiking\"]\n}" 
     },
+    // try to provide example of response for each of rule
     {
       role: "assistant",
-      //content: `Based on the user input, provide a list of places to visit.`
-      content: `Based on the extracted keywords, provide a list of places to visit.`
+      content: `Using extracted keywords and locations, suggest a list of destinations to visit. ` +
+        `Rules:\n` +
+        `- If locations are an empty array ([]), return only continents names(e.g. Europe, Asia, Africa, etc.).\nExample Output for empty locations:\n{\n \"keywords\": ["..."], "suggestedKeywords": ["..."], "locations": [], "items": [\n\n    {\n      "name": "Asia",\n      "lng": 104.1954,\n      "lat": 34.0479,\n      "description": "A continent known for its diverse cultures, historic sites, and beautiful tropical beaches.",\n      "url": "https://example.com/asia-travel"\n    }]\n}\n` +
+        `- If locations contain a continent, suggest places within that continent.\nExample Output for locations = ["Europe"]:\n{\n \"keywords\": ["..."], "suggestedKeywords": ["..."], "locations": ["Europe"], "items": [\n\n    {\n      "name": "Poland",\n      "lng": 104.1954,\n      "lat": 34.0479,\n      "description": "Visit Poland.\",\n      "url": "https://example.com/poland-travel"\n    }]\n}\n` +
+        `- If locations contain a country, suggest places in that country.\nExample Output for locations = ["Poland"]:\n{\n \"keywords\": ["..."], "suggestedKeywords": ["..."], "locations": ["Poland"], "items": [\n\n    {\n      "name": "Poland",\n      "lng": 104.1954,\n      "lat": 34.0479,\n      "description": "Visit Poland.\",\n      "url": "https://example.com/poland-travel"\n    }]\n}\n` +
+        `- If locations contain a city, suggest places in that city.\nExample Output for locations = ["Paris"]:\n{\n \"keywords\": ["..."], "suggestedKeywords": ["..."], "locations": ["Paris"], "items": [\n\n    {\n      "name": "Paris",\n      "lng": 104.1954,\n      "lat": 34.0479,\n      "description": "Visit Paris.\",\n      "url": "https://example.com/paris-travel"\n    }]\n}\n` +
+        `- If locations contain a region, suggest places in that region.\nExample Output for locations = ["Paris"]:\n{\n ....,  \"items\": [\n\n    {\n      \"name\": \"Paris\",\n      \"lng\": 104.1954,\n      \"lat\": 34.0479,\n      \"description\": \"Visit Paris.\",\n      \"url\": \"https://example.com/paris-travel\"\n    }]\n}\n` 
+        
+      // `Example Output for empty locations:\n{\n ....,  \"items\": [\n\n    {\n      \"name\": \"Asia\",\n      \"lng\": 104.1954,\n      \"lat\": 34.0479,\n      \"description\": \"A continent known for its diverse cultures, historic sites, and beautiful tropical beaches.\",\n      \"url\": \"https://example.com/asia-travel\"\n    }]\n}` +
+      //  `Example Output for locations = ["Europe"]:\n{\n ....,  \"items\": [\n\n    {\n      \"name\": \"Poland\",\n      \"lng\": 104.1954,\n      \"lat\": 34.0479,\n      \"description\": \"Visit Poland.\",\n      \"url\": \"https://example.com/poland-travel\"\n    }]\n}`
+
+      // +
+
+
+      /* 
+                     `If locations are empty array suggests continents only as destinations. (e.g. Europe, Asia, Africa, etc.). ` +
+                     `If locations are specific continent e.g. Europe then suggest places in Europe. ` 
+                  + `If location is a country then suggest places in that country. ` 
+                  + `If locations are a city then suggest places in that city. `
+                  + `If locations are a region then suggest places in that region. ` */
     },
+    /* {
+      role: 'assistant',
+      content: `From this input: "${queryInput}".\n` +
+        "Step 1: Identify and list keywords\n" +
+        "Step 2: Extract locations. If no location is extracted from input, suggest continents only as places to visit. If location is specific continent e.g. Europe then suggest places in Europe. If location is a country then suggest places in that country." +
+        "Step 3: Based on the keywords and locations, provide a list of suggested travel destinations.\n" +
+        "Step 4: Generate additional suggested keywords related to the travel theme.",
+    } */
   ];
 
   const followupSearchInput: ResponseInput = [
-    {
+    /* {
       role: "user",
       content: `User input: "${queryInput}" ` +
         `Current keywords: ${keywords.join(", ")} ` +
@@ -179,13 +214,19 @@ export async function searchPoiByOpenAI(
     {
       role: "assistant",
       content: `This is a follow up search. Based on the user input and current keywords and locations, extract the keywords from the user input and add them to the current keywords.` +
-        `Example keywords: "beach", "mountains", "city", "glaciers" etc.` +
-        `Basing on extracted keywords and current keywords, provide a list of suggested keywords. Example suggested keywords: "beach", "mountains", "city", "glaciers" etc.`
+        `Basing on extracted keywords and current keywords, provide a list of suggested keywords.`
     },
     {
       role: "assistant",
       content: `Based on the new keyword extracted from the user input and current keywords and locations, provide a list of places to visit.`
-    },
+    }, */
+
+    {
+      role: 'assistant',
+      content: `This is a follow up search. Based on the user input "${queryInput}" and current keywords "${keywords.join(", ")}" and locations "${locations.join(", ")}", extract the keywords from the input and add them to the current keywords.` +
+        `Basing on extracted keywords and current keywords, provide a list of places to visit. ` +
+        `Basing on extracted keywords and current keywords, provide a list of suggested keywords.`
+    }
   ];
 
   const searchType = queryInput && (!keywords.length && !locations.length) ? 'initial' : 'followup';
@@ -203,7 +244,7 @@ export async function searchPoiByOpenAI(
 
 
   const response = await client.responses.create({
-    model: "gpt-4o-mini",
+    model: "gpt-4o",
     tools: [{
       type: "web_search_preview",
       // search_context_size: "high",
@@ -222,6 +263,12 @@ export async function searchPoiByOpenAI(
               }
             },
             suggestedKeywords: {
+              type: "array",
+              items: {
+                type: "string"
+              }
+            },
+            locations: {
               type: "array",
               items: {
                 type: "string"
@@ -254,12 +301,17 @@ export async function searchPoiByOpenAI(
               }
             },
           },
-          required: ["items", "keywords", "suggestedKeywords"],
+          required: ["items", "keywords", "suggestedKeywords", "locations"],
           additionalProperties: false
         }
       }
     },
-    input
+    input,
+    instructions:
+      "You are a travel expert providing structured travel recommendations." +
+      "\n- Keywords are related to travel themes. Example keywords: 'beach', 'mountains', 'city', 'glaciers'. " 
+      //  "\n- Locations are location of travel destination. If no location is extracted from input, suggest continents only as places to visit. If location is specific continent e.g. Europe then suggest places in Europe. If location is a country then suggest places in that country." +
+      //"\n- If no specific locations are identified, return empty"
   });
 
   const parsedContent = JSON.parse(response.output_text);
@@ -283,12 +335,13 @@ export async function searchPoiByOpenAI(
 
   const suggestedKeywords: string[] = [...parsedContent.suggestedKeywords as string[], ...parsedContent.keywords as string[]].sort(() => Math.random() - 0.5);
 
-
-  const result = {
+  console.log(response.output_text);
+  const result: PoiSearchResponse = {
     items: pois,
     keywords: parsedContent.keywords as string[],
     suggestedKeywords,
     locations: [],
+    type: searchType
   };
 
   // Store in cache

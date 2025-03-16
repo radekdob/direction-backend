@@ -9,8 +9,8 @@ import { PoiSearchParams } from "./types-v2";
 export async function getPoiByParams(
   params: PoiSearchParams
 ): Promise<PoiSearchResponse> {
-  const { queryInput } = params;
-  const poiSearchResponse = await searchPoiByOpenAI(queryInput);
+  const { queryInput, keywords, locations } = params;
+  const poiSearchResponse = await searchPoiByOpenAI(params);
   return poiSearchResponse;
 }
 

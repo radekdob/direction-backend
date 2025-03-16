@@ -187,13 +187,15 @@ export async function searchPoiByParams(
   req: FastifyRequest<{ Body: PoiSearchParams }>,
   reply: FastifyReply
 ) {
-  const { queryInput } =
+  const { queryInput, keywords, locations } =
     req.body;
 
   try {
     // Call getLocationsByParams with the state and other parameters
-    const locations: PoiSearchResponse = await getPoiByParams({
+    const pois: PoiSearchResponse = await getPoiByParams({
       queryInput: queryInput,
+      keywords,
+      locations,
     });
 
     //   {
@@ -341,7 +343,7 @@ export async function searchPoiByParams(
     //   },
     // ];
     // reply.send(mockedItemEntries);
-     reply.send(locations);
+     reply.send(pois);
   } catch (error) {
     if (error instanceof Error) {
       req.log.error({ err: error }, "Error in searchLocationsByParams");

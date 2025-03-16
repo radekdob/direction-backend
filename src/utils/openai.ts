@@ -1,12 +1,36 @@
 import axios, { AxiosError } from "axios";
 import { getAllowedKeywords } from "./keywordService";
-import { PoiSearchResponse, PoiLLM, Poi } from "../app/search/types-v2";
+import { PoiSearchResponse, PoiLLM, Poi, PoiSearchParams } from "../app/search/types-v2";
 import OpenAI from "openai";
 import { tavily } from "@tavily/core";
 import { zodResponseFormat } from "openai/helpers/zod";
 import { z } from "zod";
 import { fetchUnsplashImages } from "./unsplash";
 import { fetchPixabayImages } from "./pixabay";
+import { ResponseInput } from "openai/resources/responses/responses";
+
+// Cache interface and initialization
+interface CacheEntry {
+  timestamp: number;
+  data: PoiSearchResponse;
+}
+
+const CACHE_EXPIRY_MS = 1000 * 60 * 60; // 1 hour
+const searchCache = new Map<string, CacheEntry>();
+
+// Cache cleanup function
+const cleanupCache = () => {
+  const now = Date.now();
+  for (const [key, entry] of searchCache.entries()) {
+    if (now - entry.timestamp > CACHE_EXPIRY_MS) {
+      searchCache.delete(key);
+    }
+  }
+};
+
+// Run cleanup every hour
+setInterval(cleanupCache, CACHE_EXPIRY_MS);
+
 interface OpenAIResponse {
   choices: Array<{
     message: {
@@ -112,8 +136,14 @@ export async function extractKeywordsFromUserInput(
 }
 
 export async function searchPoiByOpenAI(
-  userInput: string,
+  { queryInput, keywords, locations }: PoiSearchParams,
 ): Promise<PoiSearchResponse> {
+  // Check cache first
+  const cacheEntry = searchCache.get(queryInput);
+  if (cacheEntry && Date.now() - cacheEntry.timestamp < CACHE_EXPIRY_MS) {
+    return cacheEntry.data;
+  }
+
   const apiKey = process.env.OPENAI_API_KEY;
 
   if (!apiKey) {
@@ -122,9 +152,58 @@ export async function searchPoiByOpenAI(
 
   const client = new OpenAI();
 
+  const initialSearchInput: ResponseInput = [
+    {
+      role: "user",
+      content: queryInput,
+    },
+    {
+      role: "assistant",
+      content: `Based on the user input, extract the keywords. Example keywords: "beach", "mountains", "city", "glaciers" etc.` +
+        ` Basing on extracted keywords, provide a list of suggested keywords. Example suggested keywords: "beach", "mountains", "city", "glaciers" etc.`
+    },
+    {
+      role: "assistant",
+      //content: `Based on the user input, provide a list of places to visit.`
+      content: `Based on the extracted keywords, provide a list of places to visit.`
+    },
+  ];
+
+  const followupSearchInput: ResponseInput = [
+    {
+      role: "user",
+      content: `User input: "${queryInput}" ` +
+        `Current keywords: ${keywords.join(", ")} ` +
+        `Current locations: ${locations.join(", ")} `,
+    },
+    {
+      role: "assistant",
+      content: `This is a follow up search. Based on the user input and current keywords and locations, extract the keywords from the user input and add them to the current keywords.` +
+        `Example keywords: "beach", "mountains", "city", "glaciers" etc.` +
+        `Basing on extracted keywords and current keywords, provide a list of suggested keywords. Example suggested keywords: "beach", "mountains", "city", "glaciers" etc.`
+    },
+    {
+      role: "assistant",
+      content: `Based on the new keyword extracted from the user input and current keywords and locations, provide a list of places to visit.`
+    },
+  ];
+
+  const searchType = queryInput && (!keywords.length && !locations.length) ? 'initial' : 'followup';
+
+  const input: ResponseInput = searchType === 'initial' ? initialSearchInput : followupSearchInput;
+
+  console.log({
+    searchType,
+    input,
+
+    query: queryInput,
+    keywords: keywords,
+    locations: locations,
+  });
+
+
   const response = await client.responses.create({
     model: "gpt-4o-mini",
-    //include: ['computer_call_output.output.image_url'],
     tools: [{
       type: "web_search_preview",
       // search_context_size: "high",
@@ -136,6 +215,18 @@ export async function searchPoiByOpenAI(
         schema: {
           type: "object",
           properties: {
+            keywords: {
+              type: "array",
+              items: {
+                type: "string"
+              }
+            },
+            suggestedKeywords: {
+              type: "array",
+              items: {
+                type: "string"
+              }
+            },
             items: {
               type: "array",
               items: {
@@ -161,29 +252,15 @@ export async function searchPoiByOpenAI(
                 required: ["name", "lng", "lat", "description", "url"],
                 additionalProperties: false
               }
-            }
+            },
           },
-          required: ["items"],
+          required: ["items", "keywords", "suggestedKeywords"],
           additionalProperties: false
         }
       }
     },
-    input: [
-      {
-        role: "user",
-        content: userInput,
-      },
-      {
-        role: "assistant",
-        content: `Based on the user input, provide a list of places to visit. 
-For the imageUrl field, please provide a valid, publicly accessible image URL that shows the actual place.
-Use image URLs from official tourism websites travel blogs, or other public repositories. Check if the image is available on the web.
-Do not generate or make up image URLs - only use real, accessible URLs for existing images. Don't use url from url field as imageUrl.`,
-      },
-    ],
-
+    input
   });
-
 
   const parsedContent = JSON.parse(response.output_text);
 
@@ -192,7 +269,6 @@ Do not generate or make up image URLs - only use real, accessible URLs for exist
   const imagePromises = locationNames.map((name: string) => fetchPixabayImages(name));
 
   const images = await Promise.all(imagePromises);
-  console.log(images);
 
   const pois: Poi[] = parsedContent.items.map((item: PoiLLM, index: number) => ({
     ...item,
@@ -201,15 +277,25 @@ Do not generate or make up image URLs - only use real, accessible URLs for exist
       avatarUrl: "https://picsum.photos/id/71/200/200",
       name: "Lucas Oliveira",
     },
-  
-    //imageUrl: images[index]?.[0]?.urls?.regular || '',
     imageUrl: images[index]?.[0]?.webformatURL || '',
     keywords: []
   }));
 
-  return {
+  const suggestedKeywords: string[] = [...parsedContent.suggestedKeywords as string[], ...parsedContent.keywords as string[]].sort(() => Math.random() - 0.5);
+
+
+  const result = {
     items: pois,
-    //items: [],
+    keywords: parsedContent.keywords as string[],
+    suggestedKeywords,
+    locations: [],
   };
 
+  // Store in cache
+  searchCache.set(queryInput, {
+    timestamp: Date.now(),
+    data: result
+  });
+
+  return result;
 }

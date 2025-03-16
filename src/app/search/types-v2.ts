@@ -1,5 +1,7 @@
 export type PoiSearchParams = {
     queryInput: string;
+    keywords: string[];
+    locations: string[];
 }
 
 export type PoiLLM = {
@@ -23,4 +25,7 @@ export type Poi = PoiLLM & {
 
 export type PoiSearchResponse = {
     items: Poi[];
+    keywords: string[];
+    suggestedKeywords: string[];
+    locations: string[];
 }

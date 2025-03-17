@@ -4,6 +4,8 @@ export type PoiSearchParams = {
     locations: string[];
 }
 
+export type PoiType = 'location' | 'poi' | 'experience' | 'attraction' | 'cruise' | 'hotel' | 'food&drink';
+
 export type PoiLLM = {
     name: string;
     lng: number;
@@ -11,7 +13,7 @@ export type PoiLLM = {
     description: string;
     imageUrl: string;
     url: string;
-    itemType: 'location' | 'poi';
+    itemType: PoiType;
 }
 
 export type Poi = PoiLLM & {

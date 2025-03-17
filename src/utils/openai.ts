@@ -298,11 +298,11 @@ const extractKeywordsAndLocationsInput: ResponseInput = [
       role: "assistant",
       content: `From the user input:\n ` +
         "Step 1: Extract the keywords.\n" +
-        "Step 2: Extract the locations. If input does not contain information about locations use empty array as value.\n" +
+        "Step 2: Extract the locations. If input does not contain information about locations use 'Anywhere' as value.\n" +
         "Step 3: Suggest suggestedKeywords based on the keywords and locations.\n\n" +
         
         "Example output for input(with location info) 'I want to visit a tropical beach in Europe': \n{\n  \"keywords\": [\"tropical beaches\", \"historic cities\", \"kids activities\"],\n  \"locations\": [\"Europe\"],\n  \"suggestedKeywords\": [\"beaches\", \"tropical\", \"historic sites\", \"family-friendly\", \"kids' activities\"]\n}\n" +
-        "Example output for input(without location info) 'I want to visit a tropical beach': \n{\n  \"keywords\": [\"tropical beaches\", \"historic cities\", \"kids activities\"],\n  \"locations\": [],\n  \"suggestedKeywords\": [\"beaches\", \"tropical\", \"historic sites\", \"family-friendly\", \"kids' activities\"]\n}\n" 
+        "Example output for input(without location info-'Anywhere') 'I want to visit a tropical beach': \n{\n  \"keywords\": [\"tropical beaches\", \"historic cities\", \"kids activities\"],\n  \"locations\": [\"Anywhere\"],\n  \"suggestedKeywords\": [\"beaches\", \"tropical\", \"historic sites\", \"family-friendly\", \"kids' activities\"]\n}\n" 
         
         //"Example Output without extracted locations: \n{\n  \"keywords\": [\"tropical beaches\", \"historic cities\", \"kids activities\"],\n  \"locations\": [],\n  \"suggestedKeywords\": [\"beaches\", \"tropical\", \"historic sites\", \"family-friendly\", \"kids' activities\"]\n}\n" +
         //"Example Output with extracted locations: \n{\n  \"keywords\": [\"glaciers\", \"waterfalls\"],\n  \"locations\": [\"North America\"],\n  \"suggestedKeywords\": [\"glaciers\", \"waterfalls\", \"hiking\"]\n}" 
@@ -310,15 +310,15 @@ const extractKeywordsAndLocationsInput: ResponseInput = [
     // try to provide example of response for each of rule
     {
       role: "assistant",
-      content: `Using extracted keywords and locations, suggest a list of destinations/blogs/attractions to visit. ` +
-        `Rules:\n` +
-        `- If locations are an empty array ([]), return only continents names(only Europe, Asia, Africa, North America, South America, Australia, Antarctica), where the keywords are relevant.\nExample Output for empty locations:\n{\n \"keywords\": ["..."], "suggestedKeywords": ["..."], "locations": [], "items": [\n\n    {\n      "name": "Asia",\n      "lng": 104.1954,\n      "lat": 34.0479,\n      "description": "A continent known for its diverse cultures, historic sites, and beautiful tropical beaches.",\n      "url": "https://example.com/asia-travel"\n    }]\n}\n` +
-        `- If locations is a continent(e.g. Europe), suggest countries names(e.g. Poland, Germany, France) within e.g. Europe.\nExample Output for locations = ["Europe"]:\n{\n \"keywords\": ["..."], "suggestedKeywords": ["..."], "locations": ["Europe"], "items": [\n\n    {\n      "name": "Poland",\n      "lng": 104.1954,\n      "lat": 34.0479,\n      "description": "Visit Poland.\",\n      "url": "https://example.com/poland-travel"\n    }]\n}\n` +
-        `- If locations is a country(e.g. Poland), suggest cities names(e.g. Warsaw, Krakow, Gdansk) in that country.\nExample Output for locations = ["Poland"]:\n{\n \"keywords\": ["..."], "suggestedKeywords": ["..."], "locations": ["Poland"], "items": [\n\n    {\n      "name": "Poland",\n      "lng": 104.1954,\n      "lat": 34.0479,\n      "description": "Visit Poland.\",\n      "url": "https://example.com/poland-travel"\n    }]\n}\n` +
-        `- If locations is a city(e.g. Paris), suggest places in that city.\nExample Output for locations = ["Paris"]:\n{\n \"keywords\": ["..."], "suggestedKeywords": ["..."], "locations": ["Paris"], "items": [\n\n    {\n      "name": "Paris",\n      "lng": 104.1954,\n      "lat": 34.0479,\n      "description": "Visit Paris.\",\n      "url": "https://example.com/paris-travel"\n    }]\n}\n` +
-        `- If locations is a region, suggest in that region.\nExample Output for locations = ["Paris"]:\n{\n ....,  \"items\": [\n\n    {\n      \"name\": \"Paris\",\n      \"lng\": 104.1954,\n      \"lat\": 34.0479,\n      \"description\": \"Visit Paris.\",\n      \"url\": \"https://example.com/paris-travel\"\n    }]\n}\n` +
-        `- If item is a place like location (e.g. city, country, region, continent) then itemType is "location".`
-      // `Example Output for empty locations:\n{\n ....,  \"items\": [\n\n    {\n      \"name\": \"Asia\",\n      \"lng\": 104.1954,\n      \"lat\": 34.0479,\n      \"description\": \"A continent known for its diverse cultures, historic sites, and beautiful tropical beaches.\",\n      \"url\": \"https://example.com/asia-travel\"\n    }]\n}` +
+      content: `Using extracted keywords and locations, suggest a list of destinations/blogs/attractions to visit. ` 
+      //   `Rules:\n` +
+      //   `- If locations is 'Anywhere', return only continents names(only valid names are: Europe, Asia, Africa, North America, South America, Australia, Antarctica), where the keywords are relevant.\nExample Output for locations = ["Anywhere"]:\n{\n \"keywords\": ["..."], "suggestedKeywords": ["..."], "locations": ["Anywhere"], "items": [\n\n    {\n      "name": "Asia",\n      "lng": 104.1954,\n      "lat": 34.0479,\n      "description": "A continent known for its diverse cultures, historic sites, and beautiful tropical beaches.",\n      "url": "https://example.com/asia-travel"\n    }]\n}\n` +
+      //   `- If locations is a continent(e.g. Europe), suggest countries names(e.g. Poland, Germany, France) within e.g. Europe.\nExample Output for locations = ["Europe"]:\n{\n \"keywords\": ["..."], "suggestedKeywords": ["..."], "locations": ["Europe"], "items": [\n\n    {\n      "name": "Poland",\n      "lng": 104.1954,\n      "lat": 34.0479,\n      "description": "Visit Poland.\",\n      "url": "https://example.com/poland-travel"\n    }]\n}\n` +
+      //   `- If locations is a country(e.g. Poland), suggest cities names(e.g. Warsaw, Krakow, Gdansk) in that country.\nExample Output for locations = ["Poland"]:\n{\n \"keywords\": ["..."], "suggestedKeywords": ["..."], "locations": ["Poland"], "items": [\n\n    {\n      "name": "Poland",\n      "lng": 104.1954,\n      "lat": 34.0479,\n      "description": "Visit Poland.\",\n      "url": "https://example.com/poland-travel"\n    }]\n}\n` +
+      //   `- If locations is a city(e.g. Paris), suggest places in that city.\nExample Output for locations = ["Paris"]:\n{\n \"keywords\": ["..."], "suggestedKeywords": ["..."], "locations": ["Paris"], "items": [\n\n    {\n      "name": "Paris",\n      "lng": 104.1954,\n      "lat": 34.0479,\n      "description": "Visit Paris.\",\n      "url": "https://example.com/paris-travel"\n    }]\n}\n` +
+      //   `- If locations is a region, suggest in that region.\nExample Output for locations = ["Paris"]:\n{\n ....,  \"items\": [\n\n    {\n      \"name\": \"Paris\",\n      \"lng\": 104.1954,\n      \"lat\": 34.0479,\n      \"description\": \"Visit Paris.\",\n      \"url\": \"https://example.com/paris-travel\"\n    }]\n}\n` +
+      //   `- If item is a place like location (e.g. city, country, region, continent) then itemType is "location".`
+      // // `Example Output for empty locations:\n{\n ....,  \"items\": [\n\n    {\n      \"name\": \"Asia\",\n      \"lng\": 104.1954,\n      \"lat\": 34.0479,\n      \"description\": \"A continent known for its diverse cultures, historic sites, and beautiful tropical beaches.\",\n      \"url\": \"https://example.com/asia-travel\"\n    }]\n}` +
       //  `Example Output for locations = ["Europe"]:\n{\n ....,  \"items\": [\n\n    {\n      \"name\": \"Poland\",\n      \"lng\": 104.1954,\n      \"lat\": 34.0479,\n      \"description\": \"Visit Poland.\",\n      \"url\": \"https://example.com/poland-travel\"\n    }]\n}`
 
       // +
@@ -367,10 +367,10 @@ const extractKeywordsAndLocationsInput: ResponseInput = [
         `This is a follow up search. Based on the user input """${queryInput}""" and current keywords """${keywords.join(", ")}""" and locations """${locations.join(", ")}"", extract the keywords from the input and add them to the current keywords.\n ` +
         `Basing on extracted keywords and current keywords and locations, provide a list of destinations/blogs/attractions to visit.\n` +
         `Basing on extracted keywords and current keywords and locations, provide a list of suggested keywords.\n` + 
-        `Return locations as current locations values.\n` +
+        `Return locations as current locations values. (e.g. Anywhere, Europe), don't cut any value from original input.\n` +
         
         `Rules:\n` +
-        `- If locations are an empty array ([]), return only continents names(only Europe, Asia, Africa, North America, South America, Australia, Antarctica), where the keywords are relevant.\nExample Output for empty locations:\n{\n \"keywords\": ["..."], "suggestedKeywords": ["..."], "locations": [], "items": [\n\n    {\n      "name": "Asia",\n      "lng": 104.1954,\n      "lat": 34.0479,\n      "description": "A continent known for its diverse cultures, historic sites, and beautiful tropical beaches.",\n      "url": "https://example.com/asia-travel"\n    }]\n}\n` +
+        `- If locations is 'Anywhere' , return only continents names(only Europe, Asia, Africa, North America, South America, Australia, Antarctica), where the keywords are relevant.\nExample Output for locations = ["Anywhere"]:\n{\n \"keywords\": ["..."], "suggestedKeywords": ["..."], "locations": ["Anywhere"], "items": [\n\n    {\n      "name": "Asia",\n      "lng": 104.1954,\n      "lat": 34.0479,\n      "description": "A continent known for its diverse cultures, historic sites, and beautiful tropical beaches.",\n      "url": "https://example.com/asia-travel"\n    }]\n}\n` +
         `- If locations is a continent(e.g. Europe), suggest countries names(e.g. Poland, Germany, France) within e.g. Europe.\nExample Output for locations = ["Europe"]:\n{\n \"keywords\": ["..."], "suggestedKeywords": ["..."], "locations": ["Europe"], "items": [\n\n    {\n      "name": "Poland",\n      "lng": 104.1954,\n      "lat": 34.0479,\n      "description": "Visit Poland.\",\n      "url": "https://example.com/poland-travel"\n    }]\n}\n` +
         `- If locations is a country(e.g. Poland), suggest cities names(e.g. Warsaw, Krakow, Gdansk) in that country.\nExample Output for locations = ["Poland"]:\n{\n \"keywords\": ["..."], "suggestedKeywords": ["..."], "locations": ["Poland"], "items": [\n\n    {\n      "name": "Poland",\n      "lng": 104.1954,\n      "lat": 34.0479,\n      "description": "Visit Poland.\",\n      "url": "https://example.com/poland-travel"\n    }]\n}\n` +
         `- If locations is a city(e.g. Paris), suggest places in that city.\nExample Output for locations = ["Paris"]:\n{\n \"keywords\": ["..."], "suggestedKeywords": ["..."], "locations": ["Paris"], "items": [\n\n    {\n      "name": "Paris",\n      "lng": 104.1954,\n      "lat": 34.0479,\n      "description": "Visit Paris.\",\n      "url": "https://example.com/paris-travel"\n    }]\n}\n` +
@@ -454,7 +454,8 @@ const extractKeywordsAndLocationsInput: ResponseInput = [
     input,
     instructions:
       "You are a travel expert providing structured travel recommendations." +
-      "\n- Keywords are related to travel themes. Example keywords: 'beach', 'mountains', 'city', 'glaciers'. " 
+      "\n- Keywords are related to travel themes. Example keywords: 'beach', 'mountains', 'city', 'glaciers'. " +
+      "\n - Locations are in order from to least specific to most specific.(e.g. Anywhere, Europe, Poland, Warsaw) "
       //  "\n- Locations are location of travel destination. If no location is extracted from input, suggest continents only as places to visit. If location is specific continent e.g. Europe then suggest places in Europe. If location is a country then suggest places in that country." +
       //"\n- If no specific locations are identified, return empty"
   });

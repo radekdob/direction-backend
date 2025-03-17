@@ -11,6 +11,7 @@ export type PoiLLM = {
     description: string;
     imageUrl: string;
     url: string;
+    itemType: 'location' | 'poi';
 }
 
 export type Poi = PoiLLM & {
